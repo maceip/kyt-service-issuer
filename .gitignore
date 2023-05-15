@@ -1,3 +1,4 @@
-.glitchdotcom.json
-.node-gyp
+boringssl
 node_modules
+.vscode
+*pem
