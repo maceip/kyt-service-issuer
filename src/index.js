@@ -1,3 +1,19 @@
+/*
+ Copyright 2023 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
 // DSP
 import express from "express"
 import { readFileSync } from "fs"
@@ -5,7 +21,7 @@ import { promisify } from "util"
 import { resolve } from "path"
 import * as childProcess from "child_process"
 import * as sfv from "structured-field-values"
-const { EXTERNAL_PORT, PORT } = process.env
+const PORT = process.env.PORT || 3000
 
 const exec = promisify(childProcess.exec)
 const protocol_version = "PrivateStateTokenV1VOPRF"
@@ -126,23 +142,11 @@ app.get("/", async (req, res) => {
   console.log({ host })
   switch (host) {
     case "private-state-token-demo.glitch.me":
-      return res.render("index", {
-        title: "home",
-        detail: "detail",
-        EXTERNAL_PORT
-      })
+      return res.render("index")
     case "private-state-token-issuer.glitch.me":
-      return res.render("issuer", {
-        title: "issuer",
-        detail: "detail",
-        EXTERNAL_PORT
-      })
+      return res.render("issuer")
     case "private-state-token-redeemer.glitch.me":
-      return res.render("redeemer", {
-        title: "redeemer",
-        detail: "detail",
-        EXTERNAL_PORT
-      })
+      return res.render("redeemer")
     default:
       console.error(`invalid domain ${host}`)
       return
