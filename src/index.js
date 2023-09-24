@@ -16,11 +16,28 @@
 
 // DSP
 import express from "express"
+import env from 'dotenv';
+
 import { readFileSync } from "fs"
 import { promisify } from "util"
 import { resolve } from "path"
 import * as childProcess from "child_process"
 import * as sfv from "structured-field-values"
+import Stripe from 'stripe';
+
+env.config({ path: '../../.env' });
+const STRIPE_SECRET_KEY="sk_test_51Mi7JsCqgMtUYFDtU41Eh1l5savidGOyhOmNFcP8ToLR3aFNxhtg0kmd5ynRAuBRjVQYZ76T36ItloYBkZnjAxDQ00M3BCMGm8"
+const STRIPE_PUBLISHABLE_KEY="pk_test_51Mi7JsCqgMtUYFDtGJgCbhnJylAQZnjcwcQlOu1JT4WdvdTWIyJm8J5SkY7P43aRPZDl9wSbyd6pncmFxWjwh8cy00BrhORray"
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, {
+  apiVersion: '2022-08-01',
+  appInfo: { // For sample support and debugging, not required for production:
+    name: 'stripe-samples/identity/modal',
+    url: 'https://github.com/stripe-samples',
+    version: '0.0.1',
+  },
+  typescript: true,
+});
 const PORT = process.env.PORT || 3000
 const BASE64FORMAT = /^[a-zA-Z0-9+/=]+$/
 
@@ -39,7 +56,17 @@ app.use((req, res, next) => {
   res.setHeader("Origin-Trial", "token")
   next()
 })
-
+app.use(
+  express.json({
+    // We need the raw body to verify webhook signatures.
+    // Let's compute it only when hitting the Stripe webhook endpoint.
+    verify: function(req, res, buf) {
+      if (req.originalUrl.startsWith('/webhook')) {
+        req.rawBody = buf.toString();
+      }
+    }
+  })
+);
 app.use(
   express.static("src/public", {
     setHeaders: (res, path, stat) => {
@@ -147,18 +174,141 @@ app.get(`/private-state-token/send-rr`, async (req, res) => {
 app.get("/", async (req, res) => {
   const host = req.headers.host
   console.log({ host })
-  switch (host) {
-    case "private-state-token-demo.glitch.me":
-      return res.render("index")
-    case "private-state-token-issuer.glitch.me":
       return res.render("issuer")
-    case "private-state-token-redeemer.glitch.me":
-      return res.render("redeemer")
-    default:
-      console.error(`invalid domain ${host}`)
-      return
-  }
 })
+
+app.get("/submitted.html", async (req, res) => {
+  const host = req.headers.host
+  console.log({ host })
+      return res.render("submitted")
+})
+
+app.get('/config', (req, res) => {
+  res.send({
+    publishableKey: STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
+app.get('/secret', (req, res) => {
+  res.set({
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json; charset=utf-8"
+  })
+
+  const json = JSON.stringify({ a: "nyc" });
+  console.log(json)
+  res.send(json)
+});
+
+app.post('/create-verification-session', async (req, res) => {
+  try {
+    const verificationSession = await stripe.identity.verificationSessions.create({
+      type: 'document',
+      metadata: {
+        user_id: '{{USER_ID}}',
+      }
+      // Additional options for configuring the verification session:
+      // options: {
+      //   document: {
+      //     # Array of strings of allowed identity document types.
+      //     allowed_types: ['driving_license'], # passport | id_card
+      //
+      //     # Collect an ID number and perform an ID number check with the
+      //     # document’s extracted name and date of birth.
+      //     require_id_number: true,
+      //
+      //     # Disable image uploads, identity document images have to be captured
+      //     # using the device’s camera.
+      //     require_live_capture: true,
+      //
+      //     # Capture a face image and perform a selfie check comparing a photo
+      //     # ID and a picture of your user’s face.
+      //     require_matching_selfie: true,
+      //   }
+      // },
+
+    });
+
+    // Send publishable key and PaymentIntent details to client
+    res.send({
+      client_secret: verificationSession.client_secret
+    });
+
+  } catch(e) {
+    console.log(e)
+    return res.status(400).send({
+      error: {
+        message: e.message
+      }
+    });
+  }
+});
+
+// Expose a endpoint as a webhook handler for asynchronous events.
+// Configure your webhook in the stripe developer dashboard
+// https://dashboard.stripe.com/test/webhooks
+app.post('/webhook', async (req, res) => {
+  let data, eventType;
+
+  // Check if webhook signing is configured.
+  if (1) {
+    // Retrieve the event by verifying the signature using the raw body and secret.
+    let event;
+    let signature = req.headers['stripe-signature'];
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.rawBody,
+        signature,
+        "whsec_sOQ9saauA6fGl0WjmL0GkUkrwCaMPCZW"
+      );
+    } catch (err) {
+      console.log(`⚠️  Webhook signature verification failed.`);
+      return res.sendStatus(400);
+    }
+    data = event.data;
+    eventType = event.type;
+  } else {
+    // Webhook signing is recommended, but if the secret is not configured in `config.js`,
+    // we can retrieve the event data directly from the request body.
+    data = req.body.data;
+    eventType = req.body.type;
+  }
+
+  // Successfully constructed event
+  switch (eventType) {
+    case 'identity.verification_session.verified': {
+      // All the verification checks passed
+      const verificationSession = data.object;
+      break;
+    }
+    case 'identity.verification_session.requires_input': {
+      // At least one of the verification checks failed
+      const verificationSession = data.object;
+
+      console.log('Verification check failed: ' + verificationSession.last_error.reason);
+
+      // Handle specific failure reasons
+      switch (verificationSession.last_error.code) {
+        case 'document_unverified_other': {
+          // The document was invalid
+          break;
+        }
+        case 'document_expired': {
+          // The document was expired
+          break;
+        }
+        case 'document_type_not_supported': {
+          // document type not supported
+          break;
+        }
+        default: {
+          // ...
+        }
+      }
+    }
+  }
+  res.sendStatus(200);
+});
 
 app.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`)

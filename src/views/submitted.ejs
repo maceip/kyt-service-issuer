@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Identity verification submitted</title>
+    <meta name="description" content="A demo of Stripe Identity" />
+    <link rel="stylesheet" href="css/normalize.css" />
+    <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="/css/issuer.css">
+
+    <script src="https://js.stripe.com/v3/"></script>
+  <script defer src="/js/issuer.js"></script>
+
+  </head>
+  <body>
+    <div class="sr-root">
+      <div class="sr-main">
+        <section class="container">
+          <div>
+            <h1>Thanks for submitting your identity document.</h1>
+            <p>We are processing your verification.</p>
+            <h4>TLSNotary will notarize your KYC results</h4>
+
+            <button id="verify-button">Verify me</button>
+
+      <form>
+        <fieldset>
+          <legend>Create a KYC Token?</legend>
+          <input id="yes" type="checkbox" name="human">
+          <label for="yes">Yes! mint</label>
+        </fieldset>
+      </form>
+      <ul>
+        <li id="issuing" style="visibility: hidden;">📝 Issuing token...</li>
+        <li id="issued" style="visibility: hidden;">🎉 Successfully issued!</li>
+        <li id="back" style="visibility: hidden;">🔙 Now go back to the redemption demo.</li>
+      </ul>
+      <button id="refresh">Clear token</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

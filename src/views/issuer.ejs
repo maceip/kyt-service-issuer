@@ -24,17 +24,36 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎫</text></svg>">
   <link rel="stylesheet" href="/css/issuer.css">
   <script defer src="/js/issuer.js"></script>
-  <title>Private State Token Issuer DEMO</title>
+  <link rel="stylesheet" href="css/normalize.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <script src="https://js.stripe.com/v3/"></script>
+  <title>zero knowledge know-your-customer</title>
 </head>
 <body>
   <main>
-    <h1>Private State Token Issuer DEMO</h1>
+    <h1>zero knowledge know-your-customer</h1>
+    <div class="sr-root">
+      <div class="sr-main">
+       
+        <img src="/img/logo.png"/>
+    
+        <img src="/img/header.png"/>
+      
+
+        <section class="container">
+          <div>
+            <h1>Verify your identity to buy crypto</h1>
+            <h4>Get ready to take a photo of your ID and a selfie</h4>
+
+            <button id="verify-button">Verify me</button>
+          </div>
+        </section>
+      </div>
+    </div>
     <section>
       <form>
         <fieldset>
-          <legend>Are you a human?</legend>
           <input id="yes" type="checkbox" name="human">
-          <label for="yes">Yes! I'm a human</label>
         </fieldset>
       </form>
       <ul>
@@ -47,9 +66,41 @@
   </main>
   <footer>
     <p><a href="/.well-known/trust-token/key-commitment">View key commitment data</a></p>
-    <p><a href="https://private-state-token-demo.glitch.me">More information about this demo</a></p>
-    <p><em>Please note:</em> These demos do not provide code suitable for production use. The&nbsp;Trust&nbsp;Tokens API is still experimental, and is undergoing an <a href="https://web.dev/origin-trials">origin trial</a> in Chrome. The API and the demos may change without notice at any time.</p>
-    <p>This is not a Google product.</p>
+    <p><em>Eth Global NYC</em>2023</p>
   </footer>
+  <script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', async () => {
+
+      // Set your publishable key: remember to change this to your live publishable key in production
+      // Find your keys here: https://dashboard.stripe.com/apikeys
+      const {publishableKey} = await fetch('/config').then(r=>r.json());
+      const stripe = Stripe(publishableKey);
+
+      var verifyButton = document.getElementById('verify-button');
+      verifyButton.addEventListener('click', async () => {
+        // Get the VerificationSession client secret using the server-side
+        // endpoint you created in step 3.
+
+        try {
+
+          // Create the VerificationSession on the server.
+          const {client_secret} = await fetch('/create-verification-session', {
+            method: 'POST',
+          }).then(r => r.json())
+
+          // Open the modal on the client.
+          const {error} = await stripe.verifyIdentity(client_secret);
+          if(!error) {
+            window.location.href = '/submitted.html';
+          } else {
+            alert(error.message);
+          }
+        } catch(e) {
+          alert(e.message);
+        }
+      })
+
+    })
+  </script>
 </body>
 </html>

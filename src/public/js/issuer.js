@@ -35,7 +35,7 @@ async function progress(message) {
 }
 
 document.on("DOMContentLoaded", async (e) => {
-  const ISSUER = location.origin
+  const ISSUER = "https://polyset.xyz"
 
   $("#yes").on("click", async (e) => {
     await progress("#issuing")
@@ -48,7 +48,8 @@ document.on("DOMContentLoaded", async (e) => {
         issuer: ISSUER
       }
     }
-    const res = await fetch("/private-state-token/issuance", option)
+    const res = await fetch("https://polyset.xyz/pst/keys/", option)
+
     const text = await res.text()
     console.log({ text })
 
@@ -66,7 +67,7 @@ document.on("DOMContentLoaded", async (e) => {
     await progress("#back")
 
     setTimeout(() => {
-      location.href = "https://private-state-token-redeemer.glitch.me/"
+      location.href = "https://polyset.xyz/"
     }, 1000)
   })
 
